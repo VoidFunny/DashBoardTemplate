@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部门数据分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 240px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0 30px;
+            text-align: center;
+        }
+        .nav-button {
+            padding: 12px 20px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .nav-select {
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-right: 20px;
+        }
+        .back-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: white;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .charts-container {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 20px;
+        }
+        .chart-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .chart {
+            height: 300px;
+        }
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .rank-table th,
+        .rank-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .rank-table th {
+            font-weight: bold;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-title">Context</div>
+            <button class="nav-button" onclick="location.href='index.html'">主页</button>
+            <button class="nav-button" onclick="location.href='department.html'">部门</button>
+            <select class="nav-select" onchange="if(this.value) window.open(this.value, '_blank')">
+                <option value="">有用链接</option>
+                <option value="https://www.baidu.com">百度</option>
+                <option value="https://www.aliyun.com">阿里云</option>
+                <option value="https://cloud.tencent.com">腾讯云</option>
+            </select>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h1 class="title">部门数据分析</h1>
+                <button class="back-button" onclick="location.href='index.html'">返回主页</button>
+            </div>
+            <div class="charts-container">
+                <div>
+                    <div class="chart-box">
+                        <div id="lineChart1" class="chart"></div>
+                    </div>
+                    <div class="chart-box">
+                        <div id="lineChart2" class="chart"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="chart-box">
+                        <div id="pieChart" class="chart"></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>部门排名</h3>
+                        <table class="rank-table" id="deptRankTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 初始化图表
+        const lineChart1 = echarts.init(document.getElementById('lineChart1'));
+        const lineChart2 = echarts.init(document.getElementById('lineChart2'));
+        const pieChart = echarts.init(document.getElementById('pieChart'));
+
+        // 获取数据并渲染
+        async function fetchAndRenderData() {
+            try {
+                const response = await fetch('http://localhost:8000/api/dashboard');
+                const data = await response.json();
+                
+                // 渲染折线图
+                renderLineCharts(data.line_charts, data.dept_colors);
+                
+                // 渲染饼图
+                renderPieChart(data.pie_chart, data.dept_colors);
+                
+                // 渲染部门排名表
+                renderDeptRankTable(data.dept_ranks);
+            } catch (error) {
+                console.error('获取数据失败:', error);
+            }
+        }
+
+        // 渲染折线图
+        function renderLineCharts(lineChartsData, colors) {
+            const commonOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                legend: {
+                    data: lineChartsData[0].legend
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: lineChartsData[0].xAxis
+                },
+                yAxis: {
+                    type: 'value'
+                }
+            };
+
+            // 渲染第一个折线图
+            lineChart1.setOption({
+                ...commonOption,
+                title: { text: '部门访问量趋势' },
+                series: lineChartsData[0].series.map(s => ({
+                    name: s.name,
+                    type: 'line',
+                    data: s.data,
+                    smooth: true,
+                    itemStyle: { color: colors[s.name] }
+                }))
+            });
+
+            // 渲染第二个折线图
+            lineChart2.setOption({
+                ...commonOption,
+                title: { text: '部门点击量趋势' },
+                series: lineChartsData[1].series.map(s => ({
+                    name: s.name,
+                    type: 'line',
+                    data: s.data,
+                    smooth: true,
+                    itemStyle: { color: colors[s.name] }
+                }))
+            });
+        }
+
+        // 渲染饼图
+        function renderPieChart(pieData, colors) {
+            pieChart.setOption({
+                title: {
+                    text: '部门访问量占比',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left'
+                },
+                series: [{
+                    name: '访问量',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '20',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: pieData.map(item => ({
+                        value: item.value,
+                        name: item.name,
+                        itemStyle: { color: colors[item.name] }
+                    }))
+                }]
+            });
+        }
+
+        // 渲染部门排名表格
+        function renderDeptRankTable(deptRanks) {
+            document.getElementById('deptRankTable').innerHTML = `
+                <tr><th>排名</th><th>部门</th><th>数值</th></tr>
+                ${deptRanks.map(item => `
+                    <tr>
+                        <td>${item.rank}</td>
+                        <td>${item.name}</td>
+                        <td>${item.value.toLocaleString()}</td>
+                    </tr>
+                `).join('')}
+            `;
+        }
+
+        // 页面加载完成后获取数据
+        document.addEventListener('DOMContentLoaded', fetchAndRenderData);
+
+        // 窗口大小改变时重绘图表
+        window.addEventListener('resize', () => {
+            lineChart1.resize();
+            lineChart2.resize();
+            pieChart.resize();
+        });
+    </script>
+</body>
+</html> 
