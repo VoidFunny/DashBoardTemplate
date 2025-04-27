@@ -1,0 +1,174 @@
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+import random
+from datetime import datetime, timedelta
+import pandas as pd
+import os
+from typing import List, Dict
+import json
+from dateutil import parser
+
+app = FastAPI()
+
+# 挂载静态文件
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# 创建上传文件目录
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+# 模拟数据
+departments = ['技术部', '市场部', '销售部', '人力资源部', '财务部']
+department_colors = {
+    '技术部': '#5470c6',
+    '市场部': '#91cc75',
+    '销售部': '#fac858',
+    '人力资源部': '#ee6666',
+    '财务部': '#73c0de'
+}
+
+def process_excel_data(file_path: str) -> Dict:
+    """处理Excel文件数据"""
+    try:
+        # 读取所有sheet
+        excel_data = pd.read_excel(file_path, sheet_name=None)
+        
+        all_data = []
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # 处理每个sheet的数据
+        for sheet_name, df in excel_data.items():
+            # 确保必要的列存在
+            required_columns = ['日期', '部门', '点击量', '访问量', '用户数']
+            if not all(col in df.columns for col in required_columns):
+                raise ValueError(f"Sheet {sheet_name} 缺少必要的列: {required_columns}")
+            
+            # 数据清洗
+            df = df.dropna(subset=['部门', '点击量', '访问量', '用户数'])  # 删除关键字段为空的行
+            df['日期'] = pd.to_datetime(df['日期']).dt.strftime('%Y-%m-%d')
+            
+            # 转换数据类型
+            df['点击量'] = df['点击量'].astype(int)
+            df['访问量'] = df['访问量'].astype(int)
+            df['用户数'] = df['用户数'].astype(int)
+            
+            # 转换为字典列表
+            sheet_data = df.to_dict('records')
+            all_data.extend([{
+                'date': row['日期'],
+                'department': row['部门'],
+                'clicks': row['点击量'],
+                'visits': row['访问量'],
+                'users': row['用户数']
+            } for row in sheet_data])
+        
+        # 获取最新日期的数据
+        latest_data = [d for d in all_data if d['date'] == current_date]
+        if not latest_data:
+            latest_date = max(d['date'] for d in all_data)
+            latest_data = [d for d in all_data if d['date'] == latest_date]
+        
+        # 计算汇总数据
+        total_clicks = sum(d['clicks'] for d in latest_data)
+        total_visits = sum(d['visits'] for d in latest_data)
+        total_users = sum(d['users'] for d in latest_data)
+        
+        # 计算排名
+        dept_ranking = sorted(latest_data, key=lambda x: x['visits'], reverse=True)
+        user_ranking = sorted(latest_data, key=lambda x: x['users'], reverse=True)
+        
+        return {
+            "summary": {
+                "total_clicks": total_clicks,
+                "total_visits": total_visits,
+                "total_users": total_users
+            },
+            "trend_data": all_data,
+            "department_colors": department_colors,
+            "dept_ranking": dept_ranking[:10],
+            "user_ranking": user_ranking[:10]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Excel处理错误: {str(e)}")
+    finally:
+        # 清理临时文件
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+def generate_mock_data():
+    now = datetime.now()
+    data = []
+    for i in range(7):  # 最近7天的数据
+        date = (now - timedelta(days=i)).strftime('%Y-%m-%d')
+        for dept in departments:
+            data.append({
+                'date': date,
+                'department': dept,
+                'clicks': random.randint(1000, 5000),
+                'visits': random.randint(500, 2000),
+                'users': random.randint(100, 500)
+            })
+    return data
+
+@app.get("/")
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/department")
+async def department(request: Request):
+    return templates.TemplateResponse("department.html", {"request": request})
+
+@app.get("/api/dashboard-data")
+async def get_dashboard_data():
+    data = generate_mock_data()
+    
+    # 计算总计数据
+    total_clicks = sum(d['clicks'] for d in data if d['date'] == datetime.now().strftime('%Y-%m-%d'))
+    total_visits = sum(d['visits'] for d in data if d['date'] == datetime.now().strftime('%Y-%m-%d'))
+    total_users = sum(d['users'] for d in data if d['date'] == datetime.now().strftime('%Y-%m-%d'))
+    
+    # 获取最新的部门数据
+    latest_data = [d for d in data if d['date'] == datetime.now().strftime('%Y-%m-%d')]
+    
+    # 计算部门排名
+    dept_ranking = sorted(latest_data, key=lambda x: x['visits'], reverse=True)
+    user_ranking = sorted(latest_data, key=lambda x: x['users'], reverse=True)
+    
+    return {
+        "summary": {
+            "total_clicks": total_clicks,
+            "total_visits": total_visits,
+            "total_users": total_users
+        },
+        "trend_data": data,
+        "department_colors": department_colors,
+        "dept_ranking": dept_ranking[:10],
+        "user_ranking": user_ranking[:10]
+    }
+
+@app.post("/api/upload-excel")
+async def upload_excel(file: UploadFile = File(...)):
+    """上传并处理Excel文件"""
+    if not file.filename.endswith(('.xls', '.xlsx')):
+        raise HTTPException(status_code=400, detail="只支持Excel文件格式(.xls, .xlsx)")
+    
+    # 保存上传的文件
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    try:
+        contents = await file.read()
+        with open(file_path, 'wb') as f:
+            f.write(contents)
+        
+        # 处理Excel数据
+        return process_excel_data(file_path)
+    except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=400, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 

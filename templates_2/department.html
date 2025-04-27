@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部门数据 - 仪表盘</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-title">Context</div>
+            <button class="nav-button" onclick="window.location.href='/'">主页</button>
+            <button class="nav-button" onclick="window.location.href='/department'">部门</button>
+            <div class="dropdown">
+                <button class="nav-button">有用链接</button>
+                <div class="dropdown-content">
+                    <a href="https://example1.com" target="_blank">链接 1</a>
+                    <a href="https://example2.com" target="_blank">链接 2</a>
+                    <a href="https://example3.com" target="_blank">链接 3</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <img src="{{ url_for('static', path='/images/logo.png') }}" alt="Logo" class="logo">
+                <h1 class="title">部门数据详情</h1>
+                <button class="back-button" onclick="window.location.href='/'">返回主页</button>
+            </div>
+            
+            <div class="charts-container">
+                <div class="charts-left">
+                    <div class="chart-box" id="clicks-trend"></div>
+                    <div class="chart-box" id="visits-trend"></div>
+                </div>
+                <div class="charts-right">
+                    <div class="chart-box" id="department-pie"></div>
+                    <div class="chart-box">
+                        <h3>部门排名</h3>
+                        <div id="department-ranking"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 初始化图表
+        const clicksTrend = echarts.init(document.getElementById('clicks-trend'));
+        const visitsTrend = echarts.init(document.getElementById('visits-trend'));
+        const departmentPie = echarts.init(document.getElementById('department-pie'));
+        
+        // 获取数据并更新图表
+        async function updateDepartmentView() {
+            const response = await fetch('/api/dashboard-data');
+            const data = await response.json();
+            
+            // 处理趋势数据
+            const dates = [...new Set(data.trend_data.map(item => item.date))].sort();
+            const departments = [...new Set(data.trend_data.map(item => item.department))];
+            
+            // 点击量趋势图
+            const clicksSeries = departments.map(dept => ({
+                name: dept,
+                type: 'line',
+                data: dates.map(date => {
+                    const item = data.trend_data.find(d => d.date === date && d.department === dept);
+                    return item ? item.clicks : 0;
+                }),
+                itemStyle: {
+                    color: data.department_colors[dept]
+                }
+            }));
+            
+            clicksTrend.setOption({
+                title: {
+                    text: '部门点击量趋势'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: departments,
+                    type: 'scroll'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dates
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: clicksSeries
+            });
+            
+            // 访问量趋势图
+            const visitsSeries = departments.map(dept => ({
+                name: dept,
+                type: 'line',
+                data: dates.map(date => {
+                    const item = data.trend_data.find(d => d.date === date && d.department === dept);
+                    return item ? item.visits : 0;
+                }),
+                itemStyle: {
+                    color: data.department_colors[dept]
+                }
+            }));
+            
+            visitsTrend.setOption({
+                title: {
+                    text: '部门访问量趋势'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: departments,
+                    type: 'scroll'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dates
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: visitsSeries
+            });
+            
+            // 部门访问量饼图
+            const latestDate = dates[dates.length - 1];
+            const pieData = departments.map(dept => {
+                const item = data.trend_data.find(d => d.date === latestDate && d.department === dept);
+                return {
+                    name: dept,
+                    value: item ? item.visits : 0,
+                    itemStyle: {
+                        color: data.department_colors[dept]
+                    }
+                };
+            });
+            
+            departmentPie.setOption({
+                title: {
+                    text: '部门访问量占比'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: '65%',
+                    data: pieData
+                }]
+            });
+            
+            // 更新部门排名表格
+            function createTable(data, containerId, columns) {
+                const container = document.getElementById(containerId);
+                const table = document.createElement('table');
+                
+                // 创建表头
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col.label;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // 创建表体
+                const tbody = document.createElement('tbody');
+                data.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    columns.forEach(col => {
+                        const td = document.createElement('td');
+                        td.textContent = col.key === 'rank' ? (index + 1) : item[col.key];
+                        row.appendChild(td);
+                    });
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                
+                container.innerHTML = '';
+                container.appendChild(table);
+            }
+            
+            // 创建部门排名表格
+            createTable(
+                data.dept_ranking,
+                'department-ranking',
+                [
+                    { key: 'rank', label: '排名' },
+                    { key: 'department', label: '部门' },
+                    { key: 'visits', label: '访问量' },
+                    { key: 'clicks', label: '点击量' },
+                    { key: 'users', label: '用户数' }
+                ]
+            );
+        }
+        
+        // 初始加载
+        updateDepartmentView();
+        
+        // 自动刷新（每5分钟）
+        setInterval(updateDepartmentView, 5 * 60 * 1000);
+        
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            clicksTrend.resize();
+            visitsTrend.resize();
+            departmentPie.resize();
+        });
+    </script>
+</body>
+</html> 
