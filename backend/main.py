@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from vo import *
 import pandas as pd
 import random
+import threading
+import http.server
+import socketserver
+import os
 
 app = FastAPI()
 
@@ -86,4 +90,28 @@ async def upload_excel(file: UploadFile = File(...)):
         "users": users,
         "code_lines": code_lines
     }
+
+def start_frontend_server():
+    # 切换到前端目录
+    os.chdir(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+    
+    # 设置服务器端口
+    PORT = 8080
+    Handler = http.server.SimpleHTTPRequestHandler
+    
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print(f"前端服务运行在: http://localhost:{PORT}")
+        httpd.serve_forever()
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # 启动前端服务（在新线程中）
+    frontend_thread = threading.Thread(target=start_frontend_server)
+    frontend_thread.daemon = True  # 设置为守护线程，这样主线程退出时会自动结束
+    frontend_thread.start()
+    
+    # 启动后端服务
+    print("后端服务运行在: http://localhost:8000")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
