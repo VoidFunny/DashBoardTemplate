@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>部门详情</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="static/echarts.min.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-title">Context</div>
+        <button class="nav-btn" onclick="location.href='index.html'">主页</button>
+        <button class="nav-btn" onclick="location.href='department.html'">部门</button>
+        <div class="dropdown">
+            <button class="nav-btn dropbtn">有用连接</button>
+            <div class="dropdown-content">
+                <a href="https://www.baidu.com" target="_blank">百度</a>
+                <a href="https://www.aliyun.com" target="_blank">阿里云</a>
+                <a href="https://www.github.com" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="header">
+            <span class="title">部门详情</span>
+            <button class="back-btn" onclick="location.href='index.html'">返回主页</button>
+        </div>
+        <div class="department-selector">
+            <select id="department-select" class="department-select">
+                <option value="市场部">市场部</option>
+                <option value="研发部">研发部</option>
+                <option value="销售部">销售部</option>
+                <option value="人事部">人事部</option>
+                <option value="财务部">财务部</option>
+                <option value="运维部">运维部</option>
+                <option value="产品部">产品部</option>
+                <option value="设计部">设计部</option>
+                <option value="测试部">测试部</option>
+                <option value="客服部">客服部</option>
+            </select>
+        </div>
+        <div class="dashboard-grid">
+            <div class="left-panel">
+                <div id="dept-daily-users" class="chart"></div>
+                <div id="dept-daily-visits" class="chart"></div>
+            </div>
+            <div class="right-panel">
+                <div id="dept-pie" class="chart"></div>
+                <div class="tables">
+                    <div id="dept-top-users" class="table"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="static/main.js"></script>
+</body>
+</html> 

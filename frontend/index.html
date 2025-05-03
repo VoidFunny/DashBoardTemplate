@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>应用使用情况Dashboard</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="static/echarts.min.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-title">Context</div>
+        <button class="nav-btn" onclick="location.href='index.html'">主页</button>
+        <button class="nav-btn" onclick="location.href='department.html'">部门</button>
+        <div class="dropdown">
+            <button class="nav-btn dropbtn">有用连接</button>
+            <div class="dropdown-content">
+                <a href="https://www.baidu.com" target="_blank">百度</a>
+                <a href="https://www.aliyun.com" target="_blank">阿里云</a>
+                <a href="https://www.github.com" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="header">
+            <img src="static/logo.png" class="logo">
+            <span class="title">应用使用情况Dashboard</span>
+        </div>
+        <div class="summary-bar" id="summary-bar"></div>
+        <div class="dashboard-grid">
+            <div class="left-panel">
+                <div id="daily-users" class="chart"></div>
+                <div id="daily-visits" class="chart"></div>
+            </div>
+            <div class="right-panel">
+                <div id="dept-pie" class="chart"></div>
+                <div class="tables">
+                    <div id="top-users" class="table"></div>
+                    <div id="top-visits" class="table"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="static/main.js"></script>
+</body>
+</html> 
