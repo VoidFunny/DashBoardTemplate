@@ -1,0 +1,37 @@
+body {
+    font-family: "微软雅黑", Arial, sans-serif;
+    background: #f5f6fa;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 40px;
+}
+
+.chart-block {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 24px;
+    width: 500px;
+    position: relative;
+}
+
+.selector {
+    position: absolute;
+    top: 16px;
+    left: 24px;
+    z-index: 10;
+    background: rgba(255,255,255,0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.chart {
+    width: 450px;
+    height: 350px;
+    margin-top: 40px;
+} 

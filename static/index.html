@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>折线图选择器示例</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="chart-block">
+            <div class="selector">
+                <label>图表1类型：</label>
+                <select id="selector1">
+                    <option value="A">类型A</option>
+                    <option value="B">类型B</option>
+                    <option value="C">类型C</option>
+                </select>
+            </div>
+            <div id="chart1" class="chart"></div>
+        </div>
+        <div class="chart-block">
+            <div class="selector">
+                <label>图表2类型：</label>
+                <select id="selector2">
+                    <option value="A">类型A</option>
+                    <option value="B">类型B</option>
+                    <option value="C">类型C</option>
+                </select>
+            </div>
+            <div id="chart2" class="chart"></div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html> 
